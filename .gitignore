@@ -47,7 +47,7 @@ debug/
 
 # Local development files
 .dockerignore
-docker-compose.yml
+
 !docs/docker-compose.example.yml
 
 # System Files
