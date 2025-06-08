@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: .
+    ports:
+      - "3005:3005"  # Frontend accesible directamente en esta IP:puerto
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    # Eliminamos depends_on ya que ahora se conectará por IP

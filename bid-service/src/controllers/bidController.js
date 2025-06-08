@@ -10,27 +10,62 @@ class BidController {
       const { auctionId, amount } = req.body;
       const userId = req.user.id;
 
+      console.log('📝 Creando puja:', { auctionId, amount, userId });
+
       // Validar subasta
       const auction = await AuctionService.validateAuction(auctionId);
-      if (auction.status !== 'active') {
-        throw { status: 400, message: 'La subasta no está activa' };
-      }
+      console.log('🏛️ Subasta obtenida:', auction);
 
-      // Validar monto de la puja
-      const currentHighestBid = (await BidHistory.findOne({ auctionId }))?.highestBid || auction.start_price;
-      if (amount <= currentHighestBid) {
-        throw { status: 400, message: 'El monto de la puja debe ser mayor que la puja más alta actual' };
+      // Verificar múltiples posibilidades del campo status
+      const auctionStatus = auction.status || auction.state || 'unknown';
+      console.log('📊 Status de la subasta:', auctionStatus);
+
+      if (!['active', 'ongoing', 'open'].includes(auctionStatus.toLowerCase())) {
+        throw { 
+          status: 400, 
+          message: `La subasta no está activa. Status actual: ${auctionStatus}` 
+        };
       }
 
       // Validar tiempo de la subasta
       const currentTime = new Date();
-      if (currentTime > new Date(auction.end_time)) {
+      const endTime = new Date(auction.end_time || auction.endTime || auction.end_date);
+      const startTime = new Date(auction.start_time || auction.startTime || auction.start_date);
+      
+      console.log('⏰ Tiempos:', {
+        current: currentTime,
+        start: startTime,
+        end: endTime
+      });
+
+      if (currentTime < startTime) {
+        throw { status: 400, message: 'La subasta aún no ha comenzado' };
+      }
+
+      if (currentTime > endTime) {
         throw { status: 400, message: 'La subasta ha finalizado' };
+      }
+
+      // Validar monto de la puja
+      const currentHighestBid = (await BidHistory.findOne({ auctionId }))?.highestBid || 
+                               auction.start_price || 
+                               auction.startPrice || 
+                               auction.starting_price || 0;
+      
+      console.log('💰 Puja más alta actual:', currentHighestBid);
+
+      if (amount <= currentHighestBid) {
+        throw { 
+          status: 400, 
+          message: `El monto de la puja debe ser mayor que ${currentHighestBid}` 
+        };
       }
 
       // Crear puja
       const bid = new Bid({ auctionId, userId, amount });
       await bid.save();
+
+      console.log('✅ Puja creada:', bid);
 
       // Actualizar historial de pujas
       let bidHistory = await BidHistory.findOne({ auctionId });
@@ -44,21 +79,30 @@ class BidController {
       await bidHistory.save();
 
       // Enviar notificación
-      await NotificationService.sendNotification(
-        auction.owner_id,
-        `Nueva puja de ${amount} colocada en la subasta ${auctionId}`
-      );
+      try {
+        await NotificationService.sendNotification(
+          auction.owner_id || auction.ownerId || auction.userId,
+          `Nueva puja de ${amount} colocada en la subasta ${auctionId}`
+        );
+      } catch (notificationError) {
+        console.error('⚠️ Error enviando notificación:', notificationError);
+      }
 
       // Emitir actualización WebSocket
-      emitBidUpdate(auctionId, {
-        bidId: bid._id,
-        userId,
-        amount,
-        timestamp: bid.timestamp,
-      });
+      try {
+        emitBidUpdate(auctionId, {
+          bidId: bid._id,
+          userId,
+          amount,
+          timestamp: bid.timestamp,
+        });
+      } catch (wsError) {
+        console.error('⚠️ Error emitiendo WebSocket:', wsError);
+      }
 
       res.status(201).json(bid);
     } catch (error) {
+      console.error('❌ Error en createBid:', error);
       next(error);
     }
   }

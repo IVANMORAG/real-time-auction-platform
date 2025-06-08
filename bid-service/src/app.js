@@ -16,6 +16,15 @@ logger.configure({
 // Middleware
 app.use(express.json());
 
+// Health check endpoint - AGREGADO
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    service: 'bid-service',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Routes
 app.use('/bids', bidRoutes);
 
