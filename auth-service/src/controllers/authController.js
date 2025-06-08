@@ -1,3 +1,4 @@
+// controllers/authController.js - CORREGIDO
 const authService = require('../services/authService');
 const { verifyToken } = require('../config/jwt');
 
@@ -9,7 +10,7 @@ class AuthController {
       res.status(201).json({
         success: true,
         message: 'Usuario registrado exitosamente',
-        data: result
+        data: result // ✅ CORREGIDO: data contiene { token, user }
       });
     } catch (error) {
       res.status(400).json({
@@ -30,7 +31,7 @@ class AuthController {
       res.status(200).json({
         success: true,
         message: 'Login exitoso',
-        data: result
+        data: result // ✅ CORREGIDO: data contiene { token, user }
       });
     } catch (error) {
       res.status(401).json({
@@ -94,48 +95,49 @@ class AuthController {
   }
   
   async validateToken(req, res) {
-  try {
-    // 1. Extrae el token del header (no del body)
-    const token = req.headers.authorization?.split(' ')[1]; // "Bearer <token>" → "<token>"
-    
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        error: 'Token requerido en el header Authorization (formato: Bearer <token>)'
-      });
-    }
-    
-    // 2. Valida el token (tu lógica actual)
-    const decoded = verifyToken(token); // Suponiendo que tienes esta función
-    const user = await authService.validateToken(token);
-    
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Token inválido o expirado'
-      });
-    }
-    
-    // 3. Respuesta exitosa
-    res.status(200).json({
-      success: true,
-      data: {
-        valid: true,
-        user: {
-          id: user._id,
-          email: user.email,
-          role: user.role
-        }
+    try {
+      // 1. Extrae el token del header
+      const token = req.headers.authorization?.split(' ')[1];
+      
+      if (!token) {
+        return res.status(400).json({
+          success: false,
+          error: 'Token requerido en el header Authorization (formato: Bearer <token>)'
+        });
       }
-    });
-  } catch (error) {
-    res.status(401).json({
-      success: false,
-      error: 'Token inválido',
-      data: { valid: false }
-    });
+      
+      // 2. Valida el token
+      const user = await authService.validateToken(token);
+      
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          error: 'Token inválido o expirado'
+        });
+      }
+      
+      // 3. Respuesta exitosa - ✅ CORREGIDO: Estructura consistente
+      res.status(200).json({
+        success: true,
+        data: {
+          valid: true,
+          user: {
+            id: user._id,
+            email: user.email,
+            profile: user.profile,
+            role: user.role,
+            isActive: user.isActive
+          }
+        }
+      });
+    } catch (error) {
+      res.status(401).json({
+        success: false,
+        error: 'Token inválido',
+        data: { valid: false }
+      });
+    }
   }
-}
   
   async getSessions(req, res) {
     try {

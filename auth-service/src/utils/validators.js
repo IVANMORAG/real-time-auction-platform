@@ -1,3 +1,4 @@
+// utils/validators.js - BACKEND CORREGIDO
 const Joi = require('joi');
 
 const registerSchema = Joi.object({
@@ -36,7 +37,7 @@ const registerSchema = Joi.object({
       }),
     phone: Joi.string()
       .pattern(/^\+?[\d\s-()]+$/)
-      .allow('')
+      .allow('') // ✅ CORREGIDO: Permitir string vacío en lugar de null
       .messages({
         'string.pattern.base': 'Número de teléfono inválido'
       })
@@ -62,7 +63,7 @@ const updateProfileSchema = Joi.object({
   profile: Joi.object({
     firstName: Joi.string().trim().max(50),
     lastName: Joi.string().trim().max(50),
-    phone: Joi.string().pattern(/^\+?[\d\s-()]+$/).allow(''),
+    phone: Joi.string().pattern(/^\+?[\d\s-()]+$/).allow(''), // ✅ CORREGIDO
     avatar: Joi.string().uri().allow('')
   })
 });

@@ -1,3 +1,4 @@
+// models/User.js - BACKEND CORREGIDO
 const mongoose = require('mongoose');
 const { hashPassword } = require('../utils/bcrypt');
 
@@ -5,7 +6,7 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: [true, 'El email es requerido'],
-    unique: true, // Índice único definido aquí (sin duplicar con schema.index())
+    unique: true,
     lowercase: true,
     trim: true,
     match: [/^\S+@\S+\.\S+$/, 'Email inválido']
@@ -32,11 +33,12 @@ const userSchema = new mongoose.Schema({
     phone: {
       type: String,
       trim: true,
-      match: [/^\+?[\d\s-()]+$/, 'Número de teléfono inválido']
+      default: '', // ✅ CORREGIDO: Default string vacío en lugar de null
+      match: [/^\+?[\d\s-()]*$/, 'Número de teléfono inválido'] // ✅ CORREGIDO: Permitir string vacío
     },
     avatar: {
       type: String,
-      default: null
+      default: ''  // ✅ CORREGIDO: Default string vacío en lugar de null
     }
   },
   isActive: {
@@ -67,12 +69,20 @@ const userSchema = new mongoose.Schema({
 });
 
 // Índices (solo los adicionales necesarios)
-userSchema.index({ 'profile.firstName': 1, 'profile.lastName': 1 }); // Índice compuesto para búsquedas por nombre
+userSchema.index({ 'profile.firstName': 1, 'profile.lastName': 1 });
 
 // Middleware para hash de contraseña
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   this.password = await hashPassword(this.password);
+  next();
+});
+
+// ✅ AGREGADO: Middleware para limpiar campos phone vacíos
+userSchema.pre('save', function(next) {
+  if (this.profile && this.profile.phone === null) {
+    this.profile.phone = '';
+  }
   next();
 });
 

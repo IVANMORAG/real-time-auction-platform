@@ -1,167 +1,164 @@
+// services/authService.js - BACKEND CORREGIDO
 const User = require('../models/User');
 const Session = require('../models/Session');
-const { generateToken } = require('../config/jwt');
+const { generateToken, verifyToken } = require('../config/jwt');
 const { comparePassword } = require('../utils/bcrypt');
 
 class AuthService {
   async register(userData) {
-    try {
-      // Verificar si el email ya existe
-      const existingUser = await User.findOne({ email: userData.email });
-      if (existingUser) {
-        throw new Error('El email ya está registrado');
-      }
-      
-      // Crear nuevo usuario
-      const user = new User(userData);
-      await user.save();
-      
-      // Generar token
-      const token = generateToken({
-        userId: user._id,
-        email: user.email,
-        role: user.role
-      });
-      
-      // Crear sesión
-      await this.createSession(user._id, token);
-      
-      return {
-        user: {
-          id: user._id,
-          email: user.email,
-          profile: user.profile,
-          role: user.role
-        },
-        token
-      };
-    } catch (error) {
-      throw error;
+    const { email, password, profile } = userData;
+    
+    // Verificar si el usuario ya existe
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      throw new Error('El usuario ya existe');
     }
+    
+    // Crear nuevo usuario
+    const user = new User({
+      email,
+      password,
+      profile
+    });
+    
+    await user.save();
+    
+    // Generar token y crear sesión
+    const token = generateToken({ userId: user._id, email: user.email });
+    
+    const session = new Session({
+      userId: user._id,
+      token,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 horas
+    });
+    
+    await session.save();
+    
+    // ✅ CORREGIDO: Retornar estructura consistente
+    return {
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        profile: user.profile,
+        role: user.role,
+        isActive: user.isActive
+      }
+    };
   }
   
-  async login(email, password, userAgent = null, ipAddress = null) {
-    try {
-      // Buscar usuario con password incluido
-      const user = await User.findOne({ email }).select('+password');
-      
-      if (!user) {
-        throw new Error('Credenciales inválidas');
-      }
-      
-      if (!user.isActive) {
-        throw new Error('Cuenta desactivada');
-      }
-      
-      // Verificar contraseña
-      const isValidPassword = await comparePassword(password, user.password);
-      if (!isValidPassword) {
-        throw new Error('Credenciales inválidas');
-      }
-      
-      // Actualizar último login
-      user.lastLogin = new Date();
-      await user.save();
-      
-      // Generar token
-      const token = generateToken({
-        userId: user._id,
-        email: user.email,
-        role: user.role
-      });
-      
-      // Crear sesión
-      await this.createSession(user._id, token, userAgent, ipAddress);
-      
-      return {
-        user: {
-          id: user._id,
-          email: user.email,
-          profile: user.profile,
-          role: user.role,
-          lastLogin: user.lastLogin
-        },
-        token
-      };
-    } catch (error) {
-      throw error;
+  async login(email, password, userAgent, ipAddress) {
+    // Buscar usuario por email (incluir password para comparación)
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      throw new Error('Credenciales inválidas');
     }
+    
+    // Verificar contraseña
+    const isPasswordValid = await comparePassword(password, user.password);
+    if (!isPasswordValid) {
+      throw new Error('Credenciales inválidas');
+    }
+    
+    // Verificar si el usuario está activo
+    if (!user.isActive) {
+      throw new Error('Cuenta desactivada');
+    }
+    
+    // Generar token
+    const token = generateToken({ userId: user._id, email: user.email });
+    
+    // Crear sesión
+    const session = new Session({
+      userId: user._id,
+      token,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 horas
+      userAgent,
+      ipAddress
+    });
+    
+    await session.save();
+    
+    // Actualizar último login
+    user.lastLogin = new Date();
+    await user.save();
+    
+    // ✅ CORREGIDO: Retornar estructura consistente
+    return {
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        profile: user.profile,
+        role: user.role,
+        isActive: user.isActive,
+        lastLogin: user.lastLogin
+      }
+    };
   }
   
   async logout(token) {
     try {
+      // Marcar sesión como inactiva
       await Session.findOneAndUpdate(
         { token },
         { isActive: false }
       );
-      return true;
     } catch (error) {
-      throw error;
+      console.error('Error during logout:', error);
     }
   }
   
   async validateToken(token) {
     try {
+      // Verificar JWT
+      const decoded = verifyToken(token);
+      
+      // Verificar que la sesión existe y está activa
       const session = await Session.findOne({ 
         token, 
         isActive: true,
         expiresAt: { $gt: new Date() }
-      }).populate('userId');
+      });
       
-      return session ? session.userId : null;
-    } catch (error) {
-      throw error;
-    }
-  }
-  
-  async updateProfile(userId, profileData) {
-    try {
-      const user = await User.findByIdAndUpdate(
-        userId,
-        { $set: { profile: profileData } },
-        { new: true, runValidators: true }
-      );
+      if (!session) {
+        return null;
+      }
       
-      if (!user) {
-        throw new Error('Usuario no encontrado');
+      // Obtener usuario
+      const user = await User.findById(decoded.userId);
+      if (!user || !user.isActive) {
+        return null;
       }
       
       return user;
     } catch (error) {
-      throw error;
+      return null;
     }
   }
   
-  async createSession(userId, token, userAgent = null, ipAddress = null) {
-    try {
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24); // 24 horas
-      
-      const session = new Session({
-        userId,
-        token,
-        expiresAt,
-        userAgent,
-        ipAddress
-      });
-      
-      await session.save();
-      return session;
-    } catch (error) {
-      throw error;
+  async updateProfile(userId, profileData) {
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { profile: profileData },
+      { new: true, runValidators: true }
+    );
+    
+    if (!user) {
+      throw new Error('Usuario no encontrado');
     }
+    
+    return user;
   }
   
   async getUserSessions(userId) {
-    try {
-      return await Session.find({
-        userId,
-        isActive: true,
-        expiresAt: { $gt: new Date() }
-      }).sort({ createdAt: -1 });
-    } catch (error) {
-      throw error;
-    }
+    const sessions = await Session.find({
+      userId,
+      isActive: true,
+      expiresAt: { $gt: new Date() }
+    }).sort({ createdAt: -1 });
+    
+    return sessions;
   }
 }
 
