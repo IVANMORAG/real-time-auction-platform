@@ -68,7 +68,8 @@ async checkExpiredAuctions() {
     for (const auction of expiredAuctions) {
       try {
         logger.info(`⏳ Finalizando subasta: ${auction._id}`);
-        await finalizeAuction(auction._id);
+        // Pasar un token nulo por ahora; usar un token de servicio más adelante
+        await finalizeAuction(auction._id, null);
         this.processedCount++;
       } catch (error) {
         this.errorCount++;
@@ -76,8 +77,7 @@ async checkExpiredAuctions() {
       }
     }
   } catch (error) {
-    this.errorCount++;
-    logger.error('❌ Error general en checkExpiredAuctions:', error);
+    this.error('❌ Error general en checkExpiredAuctions:', error);
   }
 }
 

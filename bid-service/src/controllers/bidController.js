@@ -129,44 +129,49 @@ class BidController {
     }
   }
 
-   async getBidHistory(req, res, next) {
-    try {
-      const { auctionId } = req.params;
-      const authToken = req.header('Authorization');
+  // En tu bidController.js, modifica la función getBidHistory:
+  // Método corregido en el BidController
+async getBidHistory(req, res, next) {
+  try {
+    const { auctionId } = req.params;
+    
+    console.log(`📊 Obteniendo historial para subasta: ${auctionId}`);
+    
+    const bidHistory = await BidHistory.findOne({ auctionId });
+    
+    if (!bidHistory) {
+      console.log(`❌ No se encontró historial para subasta: ${auctionId}`);
       
-      // Obtener el historial de pujas
-      const bidHistory = await BidHistory.findOne({ auctionId });
-      
-      if (!bidHistory) {
-        throw { status: 404, message: 'Historial de pujas no encontrado' };
-      }
-
-      // Si hay un highestBidder, obtener sus datos del auth service
-      if (bidHistory.highestBidder) {
-        try {
-          const userInfo = await UserService.getBasicUserInfo(
-            bidHistory.highestBidder, 
-            authToken
-          );
-          
-          if (userInfo) {
-            // Convertir a objeto plano para modificar
-            const bidHistoryObj = bidHistory.toObject();
-            bidHistoryObj.highestBidder = userInfo;
-            return res.json(bidHistoryObj);
-          }
-        } catch (error) {
-          logger.error('Error al obtener datos del usuario:', error);
-          // Continuar sin datos del usuario
-        }
-      }
-
-      // Si no hay highestBidder o falló la obtención de datos
-      res.json(bidHistory);
-    } catch (error) {
-      next(error);
+      // ✅ CORRECCIÓN: Devolver un historial vacío en lugar de error 404
+      return res.json({
+        auctionId: auctionId,
+        bidCount: 0,
+        highestBid: 0,
+        highestBidder: null,
+        lastUpdated: null
+      });
     }
+
+    console.log(`✅ Historial encontrado:`, {
+      bidCount: bidHistory.bidCount,
+      highestBid: bidHistory.highestBid,
+      highestBidder: bidHistory.highestBidder
+    });
+
+    res.json({
+      _id: bidHistory._id,
+      auctionId: bidHistory.auctionId,
+      bidCount: bidHistory.bidCount,
+      highestBid: bidHistory.highestBid,
+      highestBidder: bidHistory.highestBidder, // Siempre ObjectId
+      lastUpdated: bidHistory.lastUpdated
+    });
+  } catch (error) {
+    console.error('❌ Error obteniendo historial de pujas:', error);
+    logger.error('Error obteniendo historial de pujas:', error);
+    next(error);
   }
+}
 }
 
 module.exports = new BidController();

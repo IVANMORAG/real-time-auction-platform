@@ -171,15 +171,33 @@ const bidService = {
 
   // Get bid history
   async getBidHistory(auctionId) {
-    try {
-      console.log('📊 Obteniendo historial de pujas:', auctionId);
-      const response = await api.get(`/api/bids/history/${auctionId}`);
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error getting bid history:', error);
-      throw error;
+  try {
+    console.log('📊 Obteniendo historial de pujas:', auctionId);
+    const response = await api.get(`/api/bids/history/${auctionId}`);
+    
+    // Manejar respuesta estandarizada
+    if (response.data.success) {
+      return {
+        ...response.data.data,
+        success: true
+      };
     }
-  },
+    
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error getting bid history:', {
+      auctionId,
+      error: error.response?.data || error.message
+    });
+    
+    // Retornar estructura consistente incluso en errores
+    throw {
+      success: false,
+      error: error.response?.data?.error || 'Error al obtener historial de pujas',
+      details: error.response?.data?.details || error.message
+    };
+  }
+},
 
   // Check WebSocket connection status
   isConnected() {

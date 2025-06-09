@@ -1,6 +1,7 @@
 // services/authService.js - BACKEND CORREGIDO
 const User = require('../models/User');
 const Session = require('../models/Session');
+const mongoose = require('mongoose'); // Agrega esta línea al inicio
 const { generateToken, verifyToken } = require('../config/jwt');
 const { comparePassword } = require('../utils/bcrypt');
 
@@ -160,6 +161,44 @@ class AuthService {
     
     return sessions;
   }
+
+  async getUserById(userId) {
+  // Validar que el ID sea un ObjectId válido
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new Error('ID de usuario inválido');
+  }
+  
+  const user = await User.findById(userId)
+    .select('-password -refreshTokens -__v')
+    .lean();
+  
+  if (!user) {
+    throw new Error('Usuario no encontrado');
+  }
+  
+  return user;
+}
+
+  async getPublicUserById(userId) {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new Error('ID de usuario inválido');
+  }
+  
+  const user = await User.findById(userId)
+    .select('email profile role isActive createdAt') // Solo campos públicos
+    .lean();
+  
+  if (!user) {
+    throw new Error('Usuario no encontrado');
+  }
+  
+  // Puedes agregar filtros adicionales aquí
+  if (!user.isActive) {
+    throw new Error('Usuario no disponible');
+  }
+  
+  return user;
+}
 }
 
 module.exports = new AuthService();

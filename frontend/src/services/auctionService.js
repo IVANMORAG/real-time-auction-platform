@@ -121,21 +121,34 @@ const auctionService = {
 
   // *** NUEVA FUNCIÓN: Obtener lista de ganadores ***
   async getAuctionWinners(page = 1, limit = 10) {
-    try {
-      const response = await api.get('/api/auctions/winners/list', {
-        params: { page, limit }
-      });
-      
-      if (response.data.success) {
-        return response.data;
-      }
-      
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching auction winners:', error);
-      throw error;
+  try {
+    const response = await api.get('/api/auctions/winners/list', {
+      params: { page, limit }
+    });
+
+    // Manejar respuesta estandarizada
+    if (response.data.success) {
+      return {
+        success: true,
+        data: response.data.data || [],
+        pagination: response.data.pagination || { page: 1, limit, total: 0, pages: 1 }
+      };
     }
-  },
+
+    return {
+      success: false,
+      data: [],
+      pagination: { page: 1, limit, total: 0, pages: 1 }
+    };
+  } catch (error) {
+    console.error('Error fetching auction winners:', error);
+    throw {
+      success: false,
+      error: error.response?.data?.error || 'Error al obtener ganadores',
+      details: error.response?.data?.details || error.message
+    };
+  }
+},
 
   // Get auctions by category
   async getAuctionsByCategory(category) {

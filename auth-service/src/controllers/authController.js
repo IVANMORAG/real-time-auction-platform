@@ -1,6 +1,7 @@
 // controllers/authController.js - CORREGIDO
 const authService = require('../services/authService');
 const { verifyToken } = require('../config/jwt');
+const mongoose = require('mongoose'); // Añade esta línea al inicio
 
 class AuthController {
   async register(req, res) {
@@ -154,6 +155,72 @@ class AuthController {
       });
     }
   }
+
+  async getUserById(req, res) {
+  try {
+    const userId = req.params.id;
+    
+    // Verificar si el usuario que hace la petición es admin o está solicitando su propio perfil
+    if (req.user._id.toString() !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'No tienes permiso para acceder a este recurso'
+      });
+    }
+    
+    const user = await authService.getUserById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'Usuario no encontrado'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: { user }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}
+
+async getPublicUserById(req, res) {
+  try {
+    const userId = req.params.id;
+    
+    // Validación básica del ID
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'ID de usuario inválido'
+      });
+    }
+    
+    const user = await authService.getPublicUserById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'Usuario no encontrado'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: { user }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}
 }
 
 module.exports = new AuthController();

@@ -21,4 +21,9 @@ router.put('/profile', requireAuth, validate(updateProfileSchema), authControlle
 router.post('/logout', requireAuth, authController.logout);
 router.get('/sessions', requireAuth, authController.getSessions);
 
+
+router.get('/users/:id', requireAuth, authController.getUserById);
+// Ruta pública para obtener información básica de usuario
+router.get('/public/users/:id', authController.getPublicUserById);
+
 module.exports = router;
