@@ -35,6 +35,23 @@ const auctionService = {
     }
   },
 
+  // Get auctions with filter support
+  async getAuctionsWithFilters(status = null) {
+    try {
+      const params = status ? { status } : {};
+      const response = await api.get('/api/auctions/', { params });
+      
+      if (response.data.success) {
+        return response.data.data || [];
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('Error fetching auctions with filters:', error);
+      throw error;
+    }
+  },
+
   // Get auction by ID  
   async getAuctionById(id) {
     try {
@@ -82,6 +99,40 @@ const auctionService = {
       return response.data;
     } catch (error) {
       console.error('Error cancelling auction:', error);
+      throw error;
+    }
+  },
+
+  // *** NUEVA FUNCIÓN: Cerrar subasta manualmente ***
+  async closeAuction(id) {
+    try {
+      const response = await api.patch(`/api/auctions/${id}/close`);
+      
+      if (response.data.success) {
+        return response.data;
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error closing auction:', error);
+      throw error;
+    }
+  },
+
+  // *** NUEVA FUNCIÓN: Obtener lista de ganadores ***
+  async getAuctionWinners(page = 1, limit = 10) {
+    try {
+      const response = await api.get('/api/auctions/winners/list', {
+        params: { page, limit }
+      });
+      
+      if (response.data.success) {
+        return response.data;
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching auction winners:', error);
       throw error;
     }
   },

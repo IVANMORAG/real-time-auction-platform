@@ -11,9 +11,16 @@ const auctionSchema = new mongoose.Schema({
     enum: ['active', 'closed', 'cancelled'], 
     default: 'active' 
   },
-  ownerId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  ownerId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
   categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
-  createdAt: { type: Date, default: Date.now },
+  winnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  winningBid: { type: Number },
+  isFinalized: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+}, {
+  // Eliminar campos duplicados y versionKey
+  versionKey: false,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
-
 module.exports = mongoose.model('Auction', auctionSchema);

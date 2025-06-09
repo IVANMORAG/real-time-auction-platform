@@ -14,15 +14,16 @@ const Auction = () => {
   const [bidAmount, setBidAmount] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [closing, setClosing] = useState(false); // New state for closing action
 
   useEffect(() => {
     const socket = bidService.initWebSocket();
-    
+
     const fetchAuctionData = async () => {
       try {
         const [auctionData, bidData] = await Promise.all([
           auctionService.getAuctionById(id),
-          bidService.getBidsByAuction(id)
+          bidService.getBidsByAuction(id),
         ]);
         setAuction(auctionData);
         setBids(bidData);
@@ -37,7 +38,7 @@ const Auction = () => {
     fetchAuctionData();
 
     bidService.onBidUpdate((bidData) => {
-      setBids(prev => [...prev, bidData]);
+      setBids((prev) => [...prev, bidData]);
     });
 
     return () => bidService.disconnectWebSocket();
@@ -69,6 +70,22 @@ const Auction = () => {
     }
   };
 
+  const handleCloseAuction = async () => {
+    if (window.confirm('¿Estás seguro de cerrar esta subasta? Esta acción no se puede deshacer.')) {
+      try {
+        setClosing(true);
+        setError(null);
+        await auctionService.closeAuction(id);
+        setAuction((prev) => ({ ...prev, status: 'closed' }));
+        alert('Subasta cerrada exitosamente');
+      } catch (err) {
+        setError('Error al cerrar la subasta');
+      } finally {
+        setClosing(false);
+      }
+    }
+  };
+
   if (loading) return <LoadingSpinner />;
   if (error) return <div className="text-red-500">{error}</div>;
   if (!auction) return <div>Subasta no encontrada</div>;
@@ -83,13 +100,20 @@ const Auction = () => {
       <p>Estado: {auction.status}</p>
       <p>Finaliza: {new Date(auction.endTime).toLocaleString()}</p>
 
-      {isOwner && (
-        <div className="mt-4">
+      {isOwner && auction.status === 'active' && (
+        <div className="mt-4 flex gap-4">
           <button
             onClick={handleDelete}
             className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
           >
             Cancelar Subasta
+          </button>
+          <button
+            onClick={handleCloseAuction}
+            disabled={closing}
+            className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 disabled:bg-gray-400"
+          >
+            {closing ? 'Cerrando...' : 'Cerrar Subasta'}
           </button>
         </div>
       )}
@@ -124,7 +148,7 @@ const Auction = () => {
           <p>No hay ofertas aún</p>
         ) : (
           <ul className="space-y-2">
-            {bids.map(bid => (
+            {bids.map((bid) => (
               <li key={bid._id} className="border-b py-2">
                 <span>${bid.amount}</span> -{' '}
                 <span>{new Date(bid.timestamp).toLocaleString()}</span>

@@ -11,10 +11,9 @@ router.use('/auctions', httpProxy(AUCTION_SERVICE_URL, {
     return `/auctions${req.url}`;
   },
   filter: (req) => {
-    return ['GET', 'POST', 'PUT', 'DELETE'].includes(req.method);
+    return ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method); // Agrega PATCH
   },
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-    // Pasar todos los headers, incluyendo Authorization
     proxyReqOpts.headers = { ...srcReq.headers };
     return proxyReqOpts;
   }
@@ -27,10 +26,9 @@ router.use('/categories', httpProxy(AUCTION_SERVICE_URL, {
     return `/categories${req.url}`;
   },
   filter: (req) => {
-    return ['GET', 'POST', 'PUT', 'DELETE'].includes(req.method);
+    return ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method); // Agrega PATCH
   },
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-    // Pasar todos los headers, incluyendo Authorization
     proxyReqOpts.headers = { ...srcReq.headers };
     return proxyReqOpts;
   }

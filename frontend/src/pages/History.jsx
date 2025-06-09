@@ -16,14 +16,20 @@ const History = () => {
     const fetchHistory = async () => {
       try {
         const [auctionResponse, bidResponse] = await Promise.all([
-          auctionService.getAllAuctions(), // Filtrar por usuario en el backend sería ideal
+          auctionService.getAllAuctions(),
           bidService.getBidsByUser(user.id)
         ]);
-        // Filtrar subastas creadas por el usuario
-        const userAuctions = auctionResponse.filter(auction => auction.owner_id === user.id);
+        console.log('Auction response:', auctionResponse);
+        console.log('User ID:', user.id);
+        const userAuctions = auctionResponse.filter(auction => {
+          const isOwner = auction.owner_id === user.id || auction.ownerId === user.id;
+          console.log('Auction:', auction._id, 'owner_id:', auction.owner_id, 'ownerId:', auction.ownerId, 'isOwner:', isOwner);
+          return isOwner;
+        });
         setAuctions(userAuctions);
         setBids(bidResponse);
       } catch (err) {
+        console.error('Error fetching history:', err);
         setError('Error al cargar el historial');
       } finally {
         setLoading(false);
@@ -50,7 +56,7 @@ const History = () => {
               <div key={auction._id} className="border rounded-lg p-4 shadow-md">
                 <h4 className="font-medium">{auction.title}</h4>
                 <p>Estado: {auction.status}</p>
-                <p>Finaliza: {new Date(auction.end_time).toLocaleString()}</p>
+                <p>Finaliza: {new Date(auction.endTime || auction.end_time).toLocaleString()}</p>
                 <Link to={`/auction/${auction._id}`} className="text-blue-500 hover:underline">Ver Detalles</Link>
               </div>
             ))}
