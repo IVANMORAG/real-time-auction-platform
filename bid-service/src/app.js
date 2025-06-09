@@ -2,6 +2,7 @@ const express = require('express');
 const bidRoutes = require('./routes/bidRoutes');
 const errorMiddleware = require('./middleware/errorMiddleware');
 const logger = require('winston');
+const apiErrorMiddleware = require('./middleware/apiErrorMiddleware');
 
 const app = express();
 
@@ -28,7 +29,7 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/bids', bidRoutes);
 
-// Error handling
+app.use(apiErrorMiddleware); // <- Agregar este antes del errorMiddleware general
 app.use(errorMiddleware);
 
 module.exports = app;

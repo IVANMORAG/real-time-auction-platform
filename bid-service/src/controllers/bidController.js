@@ -3,6 +3,8 @@ const BidHistory = require('../models/BidHistory');
 const AuctionService = require('../services/auctionService');
 const NotificationService = require('../services/notificationService');
 const { emitBidUpdate } = require('../services/websocketService');
+const UserService = require('../services/userService');
+const logger = require('winston');
 
 class BidController {
   async createBid(req, res, next) {
@@ -127,13 +129,39 @@ class BidController {
     }
   }
 
-  async getBidHistory(req, res, next) {
+   async getBidHistory(req, res, next) {
     try {
       const { auctionId } = req.params;
-      const bidHistory = await BidHistory.findOne({ auctionId }).populate('highestBidder', 'email');
+      const authToken = req.header('Authorization');
+      
+      // Obtener el historial de pujas
+      const bidHistory = await BidHistory.findOne({ auctionId });
+      
       if (!bidHistory) {
         throw { status: 404, message: 'Historial de pujas no encontrado' };
       }
+
+      // Si hay un highestBidder, obtener sus datos del auth service
+      if (bidHistory.highestBidder) {
+        try {
+          const userInfo = await UserService.getBasicUserInfo(
+            bidHistory.highestBidder, 
+            authToken
+          );
+          
+          if (userInfo) {
+            // Convertir a objeto plano para modificar
+            const bidHistoryObj = bidHistory.toObject();
+            bidHistoryObj.highestBidder = userInfo;
+            return res.json(bidHistoryObj);
+          }
+        } catch (error) {
+          logger.error('Error al obtener datos del usuario:', error);
+          // Continuar sin datos del usuario
+        }
+      }
+
+      // Si no hay highestBidder o falló la obtención de datos
       res.json(bidHistory);
     } catch (error) {
       next(error);
