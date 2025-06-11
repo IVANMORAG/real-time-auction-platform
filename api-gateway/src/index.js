@@ -8,7 +8,7 @@ const logger = require('./middleware/logger');
 const authRoutes = require('./routes/auth');
 const auctionRoutes = require('./routes/auctions');
 const bidRoutes = require('./routes/bids');
-const notificationRoutes = require('./routes/notifications');
+
 
 // Cargar variables de entorno
 require('dotenv').config();
@@ -47,6 +47,8 @@ const wsProxy = createProxyMiddleware({
   }
 });
 
+
+
 // Aplicar proxy WebSocket
 app.use('/socket.io', wsProxy);
 server.on('upgrade', wsProxy.upgrade);
@@ -58,7 +60,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api', auctionRoutes); // Esto manejará tanto /api/auctions como /api/categories
 
 app.use('/api/bids', bidRoutes);
-app.use('/api/notifications', notificationRoutes);
+
 
 // Ruta de prueba
 app.get('/health', (req, res) => {
